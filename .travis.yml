@@ -22,7 +22,7 @@ install:
 
   # Install Python, py.test, and required packages.
   - pip install pytest
-  - conda env create -f build-env.yml
+  - conda env create -f environment.yml
   - source activate build
   - python setup.py install
 
