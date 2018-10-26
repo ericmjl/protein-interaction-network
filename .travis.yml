@@ -28,7 +28,7 @@ install:
   - conda info -a
 
   # Install Python, py.test, and required packages. Double-check this.
-  - conda env create -f environment-dev.yml
+  - conda env create -f environment.yml
   # This guarantees that Python version is matrixed.
   - conda install python=$PYTHON_VERSION
   - source $HOME/miniconda/etc/profile.d/conda.sh
