@@ -8,10 +8,10 @@ language: python
 matrix:
   include:
     # We use python: 3.5 because Travis doesn't pull the actual Python version from Ubuntu's repos.
-    - python: 3.5  # we don't actually use this
+    - python: 3.5
       env: PYTHON_VERSION=3.6
 
-    - python: 3.5  # we don't actually use this
+    - python: 3.5
       env: PYTHON_VERSION=3.7
 
 install:
