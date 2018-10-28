@@ -7,10 +7,11 @@ before_script:
 language: python
 matrix:
   include:
-    - python: 3.6  # we don't actually use this
+    # We use python: 3.5 because Travis doesn't pull the actual Python version from Ubuntu's repos.
+    - python: 3.5  # we don't actually use this
       env: PYTHON_VERSION=3.6
 
-    - python: 3.7  # we don't actually use this
+    - python: 3.5  # we don't actually use this
       env: PYTHON_VERSION=3.7
 
 install:
