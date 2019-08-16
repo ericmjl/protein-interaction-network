@@ -1,6 +1,6 @@
 networkx==2.2
 pandas==0.25.0
-pytest==3.8.1
+pytest==5.1.0
 numpy==1.17.0
 scipy==1.1.0
 setuptools==40.4.3
