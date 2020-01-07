@@ -1,7 +1,7 @@
 networkx==2.3
 pandas==0.25.3
 pytest==5.3.2
-numpy==1.18.0
+numpy==1.18.1
 scipy==1.4.1
 setuptools==42.0.0
 scikit_learn==0.22
