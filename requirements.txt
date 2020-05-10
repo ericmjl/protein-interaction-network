@@ -3,5 +3,5 @@ pandas==1.0.3
 pytest==5.4.2
 numpy==1.18.4
 scipy==1.4.1
-setuptools==45.1.0
+setuptools==46.2.0
 scikit_learn==0.22
