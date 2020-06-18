@@ -1,5 +1,5 @@
 networkx==2.3
-pandas==1.0.4
+pandas==1.0.5
 pytest==5.4.2
 numpy==1.18.4
 scipy==1.4.1
