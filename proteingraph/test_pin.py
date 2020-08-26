@@ -223,7 +223,15 @@ def test_atom_features():
 
 
 def test_add_ionic_interactions_(net):
-    """Tests the function add_ionic_interactions_."""
+    """
+    Tests the function add_ionic_interactions_.
+
+    This test checks that residues involved in ionic interactions
+    are indeed oppositely-charged.
+
+    Another test is needed to make sure that ionic interactions
+    are not missed.
+    """
     resis = net.get_edges_by_bond_type("ionic")
     for n1, n2 in resis:
         resi1 = net.nodes[n1]["resi_name"]

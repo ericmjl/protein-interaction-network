@@ -415,7 +415,8 @@ class ProteinGraph(nx.Graph):
                 and self.nodes[r1]["resi_name"] in NEG_AA
             )
 
-            if not condition1 or condition2:
+            is_ionic = condition1 or condition2
+            if not is_ionic:
                 self.edges[r1, r2]["kind"].remove("ionic")
                 if len(self.edges[r1, r2]["kind"]) == 0:
                     self.remove_edge(r1, r2)
