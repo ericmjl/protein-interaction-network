@@ -173,25 +173,6 @@ class ProteinGraph(nx.Graph):
         of interacting residues.
         """
         atomic_df = PandasPdb().read_pdb(str(self.pdb_handle)).df["ATOM"]
-        # atomic_data = []
-        # with open(self.pdb_handle, "r") as f:
-        #     for line in f.readlines():
-        #         data = dict()
-        #         if line[0:7].strip(" ") in ["ATOM", "HETATM"]:
-
-        #             data["record_name"] = line[0:7].strip(" ")
-        #             data["serial_number"] = int(line[6:11].strip(" "))
-        #             data["atom_name"] = line[12:15].strip(" ")
-        #             data["residue_name"] = line[17:20]
-        #             data["chain_id"] = line[21]
-        #             data["residue_number"] = int(line[23:26])
-        #             data["x_coord"] = float(line[30:37])
-        #             data["y_coord"] = float(line[38:45])
-        #             data["z_coord"] = float(line[46:53])
-
-        #             atomic_data.append(data)
-
-        # atomic_df = pd.DataFrame(atomic_data)
         atomic_df["node_id"] = (
             atomic_df["chain_id"]
             + atomic_df["residue_number"].map(str)

@@ -68,12 +68,11 @@ def test_nodes_are_strings(net):
 def test_parse_pdb(net):
     """Test the function parse_pdb."""
     # Asserts that the number of lines in the dataframe is correct.
-    assert len(net.dataframe) == 4104, "Error: Function or data has changed!"
+    assert len(net.dataframe) == 3892, "Error: Function or data has changed!"
 
     # Asserts that the following columns are all present.
     column_types = {
         "record_name": str,
-        "serial_number": int,
         "atom_name": str,
         "residue_name": str,
         "chain_id": str,
@@ -116,7 +115,7 @@ def test_get_interacting_atoms_(net):
     """Test the function get_interacting_atoms_."""
     interacting = net.get_interacting_atoms_(6, net.distmat)
     # Asserts that the number of interactions found at 6A for 2VIU.
-    assert len(interacting[0]) == 165182
+    assert len(interacting[0]) == 156408
 
 
 def test_add_hydrophobic_interactions_(net):
