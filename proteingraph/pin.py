@@ -36,6 +36,9 @@ from .resi_atoms import (
 )
 
 
+from biopandas.pdb import PandasPdb
+
+
 class ProteinGraph(nx.Graph):
     """
     The ProteinGraph object.
@@ -53,6 +56,7 @@ class ProteinGraph(nx.Graph):
         super(ProteinGraph, self).__init__()
         self.pdb_handle = pdb_handle
         self.dataframe = self.parse_pdb()
+
         self.compute_chain_pos_aa_mapping()
 
         # Mapping of chain -> position -> aa
@@ -70,7 +74,7 @@ class ProteinGraph(nx.Graph):
         """Computes the mapping: chain -> position -> aa"""
         self.chain_pos_aa = defaultdict(dict)
         for (chain, pos, aa), d in self.dataframe.groupby(
-            ["chain_id", "resi_num", "resi_name"]
+            ["chain_id", "residue_number", "residue_name"]
         ):
             self.chain_pos_aa[chain][pos] = aa
 
@@ -108,23 +112,23 @@ class ProteinGraph(nx.Graph):
         # Metadata are:
         # - x, y, z coordinates of C-alpha
         # - chain_id
-        # - resi_num
-        # - resi_name
+        # - residue_number
+        # - residue_name
         for g, d in self.dataframe.query("record_name == 'ATOM'").groupby(
-            ["node_id", "chain_id", "resi_num", "resi_name"]
+            ["node_id", "chain_id", "residue_number", "residue_name"]
         ):
-            node_id, chain_id, resi_num, resi_name = g
-            x = d.query("atom == 'CA'")["x"].values[0]
-            y = d.query("atom == 'CA'")["y"].values[0]
-            z = d.query("atom == 'CA'")["z"].values[0]
+            node_id, chain_id, residue_number, residue_name = g
+            x_coord = d.query("atom_name == 'CA'")["x_coord"].values[0]
+            y_coord = d.query("atom_name == 'CA'")["y_coord"].values[0]
+            z_coord = d.query("atom_name == 'CA'")["z_coord"].values[0]
             self.add_node(
                 node_id,
                 chain_id=chain_id,
-                resi_num=resi_num,
-                resi_name=resi_name,
-                x=x,
-                y=y,
-                z=z,
+                residue_number=residue_number,
+                residue_name=residue_name,
+                x_coord=x_coord,
+                y_coord=y_coord,
+                z_coord=z_coord,
                 features=None,
             )
 
@@ -132,8 +136,8 @@ class ProteinGraph(nx.Graph):
         # acid sequence.
         for n, d in self.nodes(data=True):
             chain = d["chain_id"]
-            pos = d["resi_num"]
-            aa = d["resi_name"]
+            pos = d["residue_number"]
+            aa = d["residue_name"]
 
             if pos - 1 in self.chain_pos_aa[chain].keys():
                 prev_aa = self.chain_pos_aa[chain][pos - 1]
@@ -168,29 +172,30 @@ class ProteinGraph(nx.Graph):
         Backbone chain atoms are ignored for the calculation
         of interacting residues.
         """
-        atomic_data = []
-        with open(self.pdb_handle, "r") as f:
-            for line in f.readlines():
-                data = dict()
-                if line[0:7].strip(" ") in ["ATOM", "HETATM"]:
+        atomic_df = PandasPdb().read_pdb(str(self.pdb_handle)).df["ATOM"]
+        # atomic_data = []
+        # with open(self.pdb_handle, "r") as f:
+        #     for line in f.readlines():
+        #         data = dict()
+        #         if line[0:7].strip(" ") in ["ATOM", "HETATM"]:
 
-                    data["record_name"] = line[0:7].strip(" ")
-                    data["serial_number"] = int(line[6:11].strip(" "))
-                    data["atom"] = line[12:15].strip(" ")
-                    data["resi_name"] = line[17:20]
-                    data["chain_id"] = line[21]
-                    data["resi_num"] = int(line[23:26])
-                    data["x"] = float(line[30:37])
-                    data["y"] = float(line[38:45])
-                    data["z"] = float(line[46:53])
+        #             data["record_name"] = line[0:7].strip(" ")
+        #             data["serial_number"] = int(line[6:11].strip(" "))
+        #             data["atom_name"] = line[12:15].strip(" ")
+        #             data["residue_name"] = line[17:20]
+        #             data["chain_id"] = line[21]
+        #             data["residue_number"] = int(line[23:26])
+        #             data["x_coord"] = float(line[30:37])
+        #             data["y_coord"] = float(line[38:45])
+        #             data["z_coord"] = float(line[46:53])
 
-                    atomic_data.append(data)
+        #             atomic_data.append(data)
 
-        atomic_df = pd.DataFrame(atomic_data)
+        # atomic_df = pd.DataFrame(atomic_data)
         atomic_df["node_id"] = (
             atomic_df["chain_id"]
-            + atomic_df["resi_num"].map(str)
-            + atomic_df["resi_name"]
+            + atomic_df["residue_number"].map(str)
+            + atomic_df["residue_name"]
         )
 
         return atomic_df
@@ -203,7 +208,7 @@ class ProteinGraph(nx.Graph):
         dummy data.
         """
 
-        self.eucl_dists = pdist(dataframe[["x", "y", "z"]], metric="euclidean")
+        self.eucl_dists = pdist(dataframe[["x_coord", "y_coord", "z_coord"]], metric="euclidean")
         self.eucl_dists = pd.DataFrame(squareform(self.eucl_dists))
         self.eucl_dists.index = dataframe.index
         self.eucl_dists.columns = dataframe.index
@@ -273,7 +278,7 @@ class ProteinGraph(nx.Graph):
         """
 
         rgroup_df = self.filter_dataframe(
-            self.dataframe, "atom", BACKBONE_ATOMS, False
+            self.dataframe, "atom_name", BACKBONE_ATOMS, False
         )
         return rgroup_df
 
@@ -298,7 +303,7 @@ class ProteinGraph(nx.Graph):
         Criteria: R-group residues are within 5A distance.
         """
         hydrophobics_df = self.filter_dataframe(
-            self.rgroup_df, "resi_name", HYDROPHOBIC_RESIS, True
+            self.rgroup_df, "residue_name", HYDROPHOBIC_RESIS, True
         )
         distmat = self.compute_distmat(hydrophobics_df)
         interacting_atoms = self.get_interacting_atoms_(5, distmat)
@@ -313,10 +318,10 @@ class ProteinGraph(nx.Graph):
         """
 
         disulfide_df = self.filter_dataframe(
-            self.rgroup_df, "resi_name", DISULFIDE_RESIS, True
+            self.rgroup_df, "residue_name", DISULFIDE_RESIS, True
         )
         disulfide_df = self.filter_dataframe(
-            disulfide_df, "atom", DISULFIDE_ATOMS, True
+            disulfide_df, "atom_name", DISULFIDE_ATOMS, True
         )
         distmat = self.compute_distmat(disulfide_df)
         interacting_atoms = self.get_interacting_atoms_(2.2, distmat)
@@ -331,21 +336,21 @@ class ProteinGraph(nx.Graph):
         """
         # For these atoms, find those that are within 3.5A of one another.
         HBOND_ATOMS = [
-            "ND",
-            "NE",
-            "NH",
-            "NZ",
+            "ND",  # histidine and asparagine
+            "NE",  # glutamate, tryptophan, arginine, histidine
+            "NH",  # arginine
+            "NZ",  # lysine
             "OD",
             "OE",
             "OG",
             "OH",
-            "SD",
-            "SG",
+            "SD",  # cysteine
+            "SG",  # methionine
             "N",
             "O",
         ]
         hbond_df = self.filter_dataframe(
-            self.rgroup_df, "atom", HBOND_ATOMS, True
+            self.rgroup_df, "atom_name", HBOND_ATOMS, True
         )
         distmat = self.compute_distmat(hbond_df)
         interacting_atoms = self.get_interacting_atoms_(3.5, distmat)
@@ -354,7 +359,7 @@ class ProteinGraph(nx.Graph):
         # For these atoms, find those that are within 4.0A of one another.
         HBOND_ATOMS_SULPHUR = ["SD", "SG"]
         hbond_df = self.filter_dataframe(
-            self.rgroup_df, "atom", HBOND_ATOMS_SULPHUR, True
+            self.rgroup_df, "atom_name", HBOND_ATOMS_SULPHUR, True
         )
         distmat = self.compute_distmat(hbond_df)
         interacting_atoms = self.get_interacting_atoms_(4.0, distmat)
@@ -378,9 +383,9 @@ class ProteinGraph(nx.Graph):
            duplication. For now, I have chosen to leave this code duplication
            in.
         """
-        ca_coords = self.dataframe[self.dataframe["atom"] == "CA"]
+        ca_coords = self.dataframe[self.dataframe["atom_name"] == "CA"]
 
-        tri = Delaunay(ca_coords[["x", "y", "z"]])  # this is the triangulation
+        tri = Delaunay(ca_coords[["x_coord", "y_coord", "z_coord"]])  # this is the triangulation
         for simplex in tri.simplices:
             nodes = ca_coords.reset_index().loc[simplex, "node_id"]
 
@@ -396,7 +401,7 @@ class ProteinGraph(nx.Graph):
         Distance cutoff: 6A.
         """
         ionic_df = self.filter_dataframe(
-            self.rgroup_df, "resi_name", IONIC_RESIS, True
+            self.rgroup_df, "residue_name", IONIC_RESIS, True
         )
         distmat = self.compute_distmat(ionic_df)
         interacting_atoms = self.get_interacting_atoms_(6, distmat)
@@ -406,13 +411,13 @@ class ProteinGraph(nx.Graph):
         # Check that the interacting residues are of opposite charges
         for r1, r2 in self.get_edges_by_bond_type("ionic"):
             condition1 = (
-                self.nodes[r1]["resi_name"] in POS_AA
-                and self.nodes[r2]["resi_name"] in NEG_AA
+                self.nodes[r1]["residue_name"] in POS_AA
+                and self.nodes[r2]["residue_name"] in NEG_AA
             )
 
             condition2 = (
-                self.nodes[r2]["resi_name"] in POS_AA
-                and self.nodes[r1]["resi_name"] in NEG_AA
+                self.nodes[r2]["residue_name"] in POS_AA
+                and self.nodes[r1]["residue_name"] in NEG_AA
             )
 
             is_ionic = condition1 or condition2
@@ -466,8 +471,8 @@ class ProteinGraph(nx.Graph):
             interacting_resis.append((distmat.index[r], distmat.index[c]))
 
         for i, (n1, n2) in enumerate(interacting_resis):
-            assert self.nodes[n1]["resi_name"] in AROMATIC_RESIS
-            assert self.nodes[n2]["resi_name"] in AROMATIC_RESIS
+            assert self.nodes[n1]["residue_name"] in AROMATIC_RESIS
+            assert self.nodes[n2]["residue_name"] in AROMATIC_RESIS
             if self.has_edge(n1, n2):
                 self.edges[n1, n2]["kind"].add("aromatic")
             else:
@@ -493,11 +498,11 @@ class ProteinGraph(nx.Graph):
         """
 
         ring_atom_df = self.filter_dataframe(
-            dataframe, "resi_name", [aa], True
+            dataframe, "residue_name", [aa], True
         )
 
         ring_atom_df = self.filter_dataframe(
-            ring_atom_df, "atom", AA_RING_ATOMS[aa], True
+            ring_atom_df, "atom_name", AA_RING_ATOMS[aa], True
         )
         return ring_atom_df
 
@@ -523,7 +528,7 @@ class ProteinGraph(nx.Graph):
         """
         centroid_df = (
             ring_atom_df.groupby("node_id")
-            .mean()[["x", "y", "z"]]
+            .mean()[["x_coord", "y_coord", "z_coord"]]
             .reset_index()
         )
 
@@ -538,7 +543,7 @@ class ProteinGraph(nx.Graph):
         AROMATIC_RESIS = ["PHE", "TYR", "TRP"]
 
         aromatic_sulphur_df = self.filter_dataframe(
-            self.rgroup_df, "resi_name", RESIDUES, True
+            self.rgroup_df, "residue_name", RESIDUES, True
         )
         distmat = self.compute_distmat(aromatic_sulphur_df)
         interacting_atoms = self.get_interacting_atoms_(5.3, distmat)
@@ -559,7 +564,7 @@ class ProteinGraph(nx.Graph):
 
     def add_cation_pi_interactions_(self):
         cation_pi_df = self.filter_dataframe(
-            self.rgroup_df, "resi_name", CATION_PI_RESIS, True
+            self.rgroup_df, "residue_name", CATION_PI_RESIS, True
         )
         distmat = self.compute_distmat(cation_pi_df)
         interacting_atoms = self.get_interacting_atoms_(6, distmat)
@@ -660,7 +665,7 @@ class ProteinGraph(nx.Graph):
         assert self.has_node(node)
 
         # Declare a convenience variable for accessing the amino acid name
-        aa = self.nodes[node]["resi_name"]
+        aa = self.nodes[node]["residue_name"]
 
         # Encode the amino acid as a one-of-K encoding.
         aa_lb = LabelBinarizer()
@@ -736,9 +741,9 @@ class ProteinGraph(nx.Graph):
         """
         A helper function for getting the x, y, z coordinates of a node.
         """
-        x = self.nodes[n]["x"]
-        y = self.nodes[n]["y"]
-        z = self.nodes[n]["z"]
+        x = self.nodes[n]["x_coord"]
+        y = self.nodes[n]["y_coord"]
+        z = self.nodes[n]["z_coord"]
 
         return x, y, z
 

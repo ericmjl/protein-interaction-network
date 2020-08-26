@@ -74,13 +74,13 @@ def test_parse_pdb(net):
     column_types = {
         "record_name": str,
         "serial_number": int,
-        "atom": str,
-        "resi_name": str,
+        "atom_name": str,
+        "residue_name": str,
         "chain_id": str,
-        "resi_num": int,
-        "x": float,
-        "y": float,
-        "z": float,
+        "residue_number": int,
+        "x_coord": float,
+        "y_coord": float,
+        "z_coord": float,
         "node_id": str,
     }
     for c in column_types.keys():
@@ -95,9 +95,9 @@ def test_compute_distmat(net):
     for i in range(1, 2):
         d = dict()
         d["idx"] = i
-        d["x"] = i
-        d["y"] = i
-        d["z"] = i
+        d["x_coord"] = i
+        d["y_coord"] = i
+        d["z_coord"] = i
         data.append(d)
     df = pd.DataFrame(data)
     distmat = net.compute_distmat(df)
@@ -134,8 +134,8 @@ def test_add_hydrophobic_interactions_(net):
         "TYR",
     ]
     for (r1, r2) in resis:
-        assert net.nodes[r1]["resi_name"] in HYDROPHOBIC_RESIS
-        assert net.nodes[r2]["resi_name"] in HYDROPHOBIC_RESIS
+        assert net.nodes[r1]["residue_name"] in HYDROPHOBIC_RESIS
+        assert net.nodes[r2]["residue_name"] in HYDROPHOBIC_RESIS
 
 
 def test_add_disulfide_interactions_(net):
@@ -143,8 +143,8 @@ def test_add_disulfide_interactions_(net):
     resis = net.get_edges_by_bond_type("disulfide")
 
     for (r1, r2) in resis:
-        assert net.nodes[r1]["resi_name"] == "CYS"
-        assert net.nodes[r2]["resi_name"] == "CYS"
+        assert net.nodes[r1]["residue_name"] == "CYS"
+        assert net.nodes[r2]["residue_name"] == "CYS"
 
 
 @pytest.mark.skip(reason="Not yet implemented.")
@@ -181,8 +181,8 @@ def test_add_aromatic_interactions_(net):
     """
     resis = net.get_edges_by_bond_type("aromatic")
     for n1, n2 in resis:
-        assert net.nodes[n1]["resi_name"] in AROMATIC_RESIS
-        assert net.nodes[n2]["resi_name"] in AROMATIC_RESIS
+        assert net.nodes[n1]["residue_name"] in AROMATIC_RESIS
+        assert net.nodes[n2]["residue_name"] in AROMATIC_RESIS
 
 
 def test_add_aromatic_sulphur_interactions_(net):
@@ -191,13 +191,13 @@ def test_add_aromatic_sulphur_interactions_(net):
     resis = net.get_edges_by_bond_type("aromatic_sulphur")
     for n1, n2 in resis:
         condition1 = (
-            net.nodes[n1]["resi_name"] in SULPHUR_RESIS
-            and net.nodes[n2]["resi_name"] in AROMATIC_RESIS
+            net.nodes[n1]["residue_name"] in SULPHUR_RESIS
+            and net.nodes[n2]["residue_name"] in AROMATIC_RESIS
         )
 
         condition2 = (
-            net.nodes[n2]["resi_name"] in SULPHUR_RESIS
-            and net.nodes[n1]["resi_name"] in AROMATIC_RESIS
+            net.nodes[n2]["residue_name"] in SULPHUR_RESIS
+            and net.nodes[n1]["residue_name"] in AROMATIC_RESIS
         )
 
         assert condition1 or condition2
@@ -208,8 +208,8 @@ def test_add_cation_pi_interactions_(net):
 
     resis = net.get_edges_by_bond_type("cation_pi")
     for n1, n2 in resis:
-        resi1 = net.nodes[n1]["resi_name"]
-        resi2 = net.nodes[n2]["resi_name"]
+        resi1 = net.nodes[n1]["residue_name"]
+        resi2 = net.nodes[n2]["residue_name"]
 
         condition1 = resi1 in CATION_RESIS and resi2 in PI_RESIS
         condition2 = resi2 in CATION_RESIS and resi1 in PI_RESIS
@@ -234,8 +234,8 @@ def test_add_ionic_interactions_(net):
     """
     resis = net.get_edges_by_bond_type("ionic")
     for n1, n2 in resis:
-        resi1 = net.nodes[n1]["resi_name"]
-        resi2 = net.nodes[n2]["resi_name"]
+        resi1 = net.nodes[n1]["residue_name"]
+        resi2 = net.nodes[n2]["residue_name"]
 
         condition1 = resi1 in POS_AA and resi2 in NEG_AA
         condition2 = resi2 in POS_AA and resi1 in NEG_AA
@@ -257,7 +257,7 @@ def test_add_ionic_interactions_example():
 def test_feature_array(net):
     """Test the function feature_array."""
     with pytest.raises(AssertionError):
-        net.feature_array("atom")
+        net.feature_array("atom_name")
 
     node_features = net.feature_array(kind="node")
     assert len(node_features) == len(net.nodes())
