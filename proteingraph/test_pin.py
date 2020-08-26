@@ -243,6 +243,17 @@ def test_add_ionic_interactions_(net):
         assert condition1 or condition2
 
 
+
+def test_add_ionic_interactions_example():
+    """
+    Example-based test.
+
+    Check on HIV protease that "B8ARG", "A29ASP" contains both ionic
+    and hbond interactions.
+    """
+    pass
+
+
 def test_feature_array(net):
     """Test the function feature_array."""
     with pytest.raises(AssertionError):
