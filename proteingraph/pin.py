@@ -3,6 +3,14 @@ Author: Eric J. Ma
 License: MIT
 
 A Python module that computes the protein interaction graph from a PDB file.
+
+Intended usage:
+
+```python
+from proteingraph import read_pdb
+
+G = read_pdb("/path/to/file.pdb")
+```
 """
 
 from collections import defaultdict
@@ -39,6 +47,176 @@ from .resi_atoms import (
 from biopandas.pdb import PandasPdb
 
 
+
+
+def read_pdb(path: Path) -> nx.Graph:
+    """
+    Parses the PDB file as a pandas DataFrame object.
+
+    Backbone chain atoms are ignored for the calculation
+    of interacting residues.
+    """
+    atomic_df = PandasPdb().read_pdb(str(path)).df["ATOM"]
+    atomic_df["node_id"] = (
+        atomic_df["chain_id"]
+        + atomic_df["residue_number"].map(str)
+        + atomic_df["residue_name"]
+    )
+    return atomic_df
+
+
+def compute_chain_pos_aa_mapping(pdb_df):
+    """Computes the mapping: chain -> position -> aa"""
+    chain_pos_aa = defaultdict(dict)
+    for (chain, pos, aa), _ in pdb_df.groupby(
+        ["chain_id", "residue_number", "residue_name"]
+    ):
+        chain_pos_aa[chain][pos] = aa
+    return chain_pos_aa
+
+def compute_interaction_graph(pdb_df, chain_pos_aa):
+    """
+    Computes the interaction graph.
+
+    Graph definition and metadata:
+    ==============================
+    - Node: Amino acid position.
+        - aa: amino acid identity
+
+    - Edge: Any interaction found by the atomic interaction network.
+        - hbond:            BOOLEAN
+        - disulfide:        BOOLEAN
+        - hydrophobic:      BOOLEAN
+        - ionic:            BOOLEAN
+        - aromatic:         BOOLEAN
+        - aromatic_sulphur: BOOLEAN
+        - cation_pi:        BOOLEAN
+    """
+    # Add in nodes with their metadata
+    # Metadata are:
+    # - x, y, z coordinates of C-alpha
+    # - chain_id
+    # - residue_number
+    # - residue_name
+    G = nx.Graph()
+    for g, d in pdb_df.query("record_name == 'ATOM'").groupby(
+        ["node_id", "chain_id", "residue_number", "residue_name"]
+    ):
+        node_id, chain_id, residue_number, residue_name = g
+        x_coord = d.query("atom_name == 'CA'")["x_coord"].values[0]
+        y_coord = d.query("atom_name == 'CA'")["y_coord"].values[0]
+        z_coord = d.query("atom_name == 'CA'")["z_coord"].values[0]
+        G.add_node(
+            node_id,
+            chain_id=chain_id,
+            residue_number=residue_number,
+            residue_name=residue_name,
+            x_coord=x_coord,
+            y_coord=y_coord,
+            z_coord=z_coord,
+            features=None,
+        )
+
+    # Add in edges for amino acids that are adjacent in the linear amino
+    # acid sequence.
+    for n, d in G.nodes(data=True):
+        chain = d["chain_id"]
+        pos = d["residue_number"]
+        aa = d["residue_name"]
+
+        if pos - 1 in chain_pos_aa[chain].keys():
+            prev_aa = chain_pos_aa[chain][pos - 1]
+            prev_node = f"{chain}{pos-1}{prev_aa}"
+            if aa in RESI_NAMES and prev_aa in RESI_NAMES:
+                G.add_edge(n, prev_node, kind={"backbone"})
+
+        if pos + 1 in chain_pos_aa[chain].keys():
+            next_aa = chain_pos_aa[chain][pos + 1]
+            next_node = f"{chain}{pos+1}{next_aa}"
+            if aa in RESI_NAMES and next_aa in RESI_NAMES:
+                G.add_edge(n, next_node, kind={"backbone"})
+
+    # Define function shortcuts for each of the interactions.
+    # funcs = dict()
+    # funcs["hydrophobic"] = add_hydrophobic_interactions_
+    # funcs["disulfide"] = add_disulfide_interactions_
+    # funcs["hbond"] = add_hydrogen_bond_interactions_
+    # funcs["ionic"] = add_ionic_interactions_
+    # funcs["aromatic"] = add_aromatic_interactions_
+    # funcs["aromatic_sulphur"] = add_aromatic_sulphur_interactions_
+    # funcs["cation_pi"] = add_cation_pi_interactions_
+    funcs = [
+        add_hydrophobic_interactions_,
+        add_disulfide_interactions_,
+        add_hydrogen_bond_interactions_,
+        add_ionic_interactions_,
+        add_aromatic_interactions_,
+        add_aromatic_sulphur_interactions_,
+        add_cation_pi_interactions_,
+    ]
+
+    # Add in each type of edge, based on the above.
+    for func in funcs:
+        func()
+    return G
+
+
+def convert_all_sets_to_lists(G):
+    """Utility function to convert all node and edge attributes to lists."""
+    for n, d in G.nodes(data=True):
+        for k, v in d.items():
+            if isinstance(v, set):
+                G.nodes[n][k] = list(v)
+
+    for u1, u2, d in G.edges(data=True):
+        for k, v in d.items():
+            if isinstance(v, set):
+                G.edges[u1, u2][k] = list(v)
+
+
+
+def compute_distmat(pdb_df):
+    """
+    Computes the pairwise euclidean distances between every atom.
+
+    Design choice: passed in a DataFrame to enable easier testing on
+    dummy data.
+    """
+
+    eucl_dists = pdist(pdb_df[["x_coord", "y_coord", "z_coord"]], metric="euclidean")
+    eucl_dists = pd.DataFrame(squareform(eucl_dists))
+    eucl_dists.index = pdb_df.index
+    eucl_dists.columns = pdb_df.index
+
+    return eucl_dists
+
+
+def get_rgroup_dataframe_():
+    """
+    Returns just the atoms that are amongst the R-groups and not part of
+    the backbone chain.
+    """
+
+    rgroup_df = filter_dataframe(
+        .dataframe, "atom_name", BACKBONE_ATOMS, False
+    )
+    return rgroup_df
+
+
+
+def filter_dataframe(dataframe, by_column, list_of_values, boolean):
+    """
+    Filters the [dataframe] such that the [by_column] values have to be
+    in the [list_of_values] list if boolean == True, or not in the list
+    if boolean == False
+    """
+    df = dataframe.copy()
+    df = df[df[by_column].isin(list_of_values) == boolean]
+    df.reset_index(inplace=True, drop=True)
+
+    return df
+
+
 class ProteinGraph(nx.Graph):
     """
     The ProteinGraph object.
@@ -52,15 +230,12 @@ class ProteinGraph(nx.Graph):
     neural-fingerprint Python package.
     """
 
-    def __init__(self, pdb_handle: Path):
+    def __init__(self):
         super(ProteinGraph, self).__init__()
-        self.pdb_handle = pdb_handle
-        self.dataframe = self.parse_pdb()
 
-        self.compute_chain_pos_aa_mapping()
+        self.chain_pos_aa_mapping = compute_chain_pos_aa_mapping()
 
         # Mapping of chain -> position -> aa
-        self.distmat = self.compute_distmat(self.dataframe)
         self.rgroup_df = self.get_rgroup_dataframe_()
         # Automatically compute the interaction graph upon loading.
         self.compute_interaction_graph()
@@ -69,132 +244,6 @@ class ProteinGraph(nx.Graph):
 
         # Convert all metadata that are set datatypes to lists.
         self.convert_all_sets_to_lists()
-
-    def compute_chain_pos_aa_mapping(self):
-        """Computes the mapping: chain -> position -> aa"""
-        self.chain_pos_aa = defaultdict(dict)
-        for (chain, pos, aa), d in self.dataframe.groupby(
-            ["chain_id", "residue_number", "residue_name"]
-        ):
-            self.chain_pos_aa[chain][pos] = aa
-
-    def convert_all_sets_to_lists(self):
-        """Utility function to convert all node and edge attributes to lists."""
-        for n, d in self.nodes(data=True):
-            for k, v in d.items():
-                if isinstance(v, set):
-                    self.nodes[n][k] = list(v)
-
-        for u1, u2, d in self.edges(data=True):
-            for k, v in d.items():
-                if isinstance(v, set):
-                    self.edges[u1, u2][k] = list(v)
-
-    def compute_interaction_graph(self):
-        """
-        Computes the interaction graph.
-
-        Graph definition and metadata:
-        ==============================
-        - Node: Amino acid position.
-            - aa: amino acid identity
-
-        - Edge: Any interaction found by the atomic interaction network.
-            - hbond:            BOOLEAN
-            - disulfide:        BOOLEAN
-            - hydrophobic:      BOOLEAN
-            - ionic:            BOOLEAN
-            - aromatic:         BOOLEAN
-            - aromatic_sulphur: BOOLEAN
-            - cation_pi:        BOOLEAN
-        """
-        # Add in nodes with their metadata
-        # Metadata are:
-        # - x, y, z coordinates of C-alpha
-        # - chain_id
-        # - residue_number
-        # - residue_name
-        for g, d in self.dataframe.query("record_name == 'ATOM'").groupby(
-            ["node_id", "chain_id", "residue_number", "residue_name"]
-        ):
-            node_id, chain_id, residue_number, residue_name = g
-            x_coord = d.query("atom_name == 'CA'")["x_coord"].values[0]
-            y_coord = d.query("atom_name == 'CA'")["y_coord"].values[0]
-            z_coord = d.query("atom_name == 'CA'")["z_coord"].values[0]
-            self.add_node(
-                node_id,
-                chain_id=chain_id,
-                residue_number=residue_number,
-                residue_name=residue_name,
-                x_coord=x_coord,
-                y_coord=y_coord,
-                z_coord=z_coord,
-                features=None,
-            )
-
-        # Add in edges for amino acids that are adjacent in the linear amino
-        # acid sequence.
-        for n, d in self.nodes(data=True):
-            chain = d["chain_id"]
-            pos = d["residue_number"]
-            aa = d["residue_name"]
-
-            if pos - 1 in self.chain_pos_aa[chain].keys():
-                prev_aa = self.chain_pos_aa[chain][pos - 1]
-                prev_node = f"{chain}{pos-1}{prev_aa}"
-                if aa in RESI_NAMES and prev_aa in RESI_NAMES:
-                    self.add_edge(n, prev_node, kind={"backbone"})
-
-            if pos + 1 in self.chain_pos_aa[chain].keys():
-                next_aa = self.chain_pos_aa[chain][pos + 1]
-                next_node = f"{chain}{pos+1}{next_aa}"
-                if aa in RESI_NAMES and next_aa in RESI_NAMES:
-                    self.add_edge(n, next_node, kind={"backbone"})
-
-        # Define function shortcuts for each of the interactions.
-        funcs = dict()
-        funcs["hydrophobic"] = self.add_hydrophobic_interactions_
-        funcs["disulfide"] = self.add_disulfide_interactions_
-        funcs["hbond"] = self.add_hydrogen_bond_interactions_
-        funcs["ionic"] = self.add_ionic_interactions_
-        funcs["aromatic"] = self.add_aromatic_interactions_
-        funcs["aromatic_sulphur"] = self.add_aromatic_sulphur_interactions_
-        funcs["cation_pi"] = self.add_cation_pi_interactions_
-
-        # Add in each type of edge, based on the above.
-        for k, v in funcs.items():
-            v()
-
-    def parse_pdb(self):
-        """
-        Parses the PDB file as a pandas DataFrame object.
-
-        Backbone chain atoms are ignored for the calculation
-        of interacting residues.
-        """
-        atomic_df = PandasPdb().read_pdb(str(self.pdb_handle)).df["ATOM"]
-        atomic_df["node_id"] = (
-            atomic_df["chain_id"]
-            + atomic_df["residue_number"].map(str)
-            + atomic_df["residue_name"]
-        )
-
-        return atomic_df
-
-    def compute_distmat(self, dataframe):
-        """
-        Computes the pairwise euclidean distances between every atom.
-
-        Design choice: passed in a DataFrame to enable easier testing on
-        dummy data.
-        """
-
-        self.eucl_dists = pdist(dataframe[["x_coord", "y_coord", "z_coord"]], metric="euclidean")
-        self.eucl_dists = pd.DataFrame(squareform(self.eucl_dists))
-        self.eucl_dists.index = dataframe.index
-        self.eucl_dists.columns = dataframe.index
-
-        return self.eucl_dists
 
     def get_interacting_atoms_(self, angstroms, distmat):
         """
@@ -212,8 +261,8 @@ class ProteinGraph(nx.Graph):
         two apart.
 
         ### Parameters
-        - interacting_atoms:    (numpy array) result from
-                                get_interacting_atoms_ function.
+
+        - interacting_atoms:    (numpy array) result from get_interacting_atoms_ function.
         - dataframe:            (pandas dataframe) a pandas dataframe that
                                 houses the euclidean locations of each atom.
         - kind:                 (list) the kind of interaction. Contains one
@@ -230,8 +279,7 @@ class ProteinGraph(nx.Graph):
         Returns:
         ========
         - filtered_interacting_resis: (set of tuples) the residues that are in
-                                      an interaction, with the interaction kind
-                                      specified
+            an interaction, with the interaction kind specified
 
         """
         # This assertion/check is present for defensive programming!
@@ -252,28 +300,6 @@ class ProteinGraph(nx.Graph):
 
         # return filtered_interacting_resis
 
-    def get_rgroup_dataframe_(self):
-        """
-        Returns just the atoms that are amongst the R-groups and not part of
-        the backbone chain.
-        """
-
-        rgroup_df = self.filter_dataframe(
-            self.dataframe, "atom_name", BACKBONE_ATOMS, False
-        )
-        return rgroup_df
-
-    def filter_dataframe(self, dataframe, by_column, list_of_values, boolean):
-        """
-        Filters the [dataframe] such that the [by_column] values have to be
-        in the [list_of_values] list if boolean == True, or not in the list
-        if boolean == False
-        """
-        df = dataframe.copy()
-        df = df[df[by_column].isin(list_of_values) == boolean]
-        df.reset_index(inplace=True, drop=True)
-
-        return df
 
     # SPECIFIC INTERACTION FUNCTIONS #
     def add_hydrophobic_interactions_(self):
