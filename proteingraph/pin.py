@@ -76,7 +76,12 @@ def compute_chain_pos_aa_mapping(pdb_df):
 from functools import partial
 
 
-def read_pdb(path):
+def read_pdb(path) -> nx.Graph:
+    """
+    Parse PDB file into protein graph.
+
+    Overall function to read PDB and get back graph.
+    """
     pdb_df = pdb2df(path)
     rgroup_df = compute_rgroup_dataframe(pdb_df)
     chain_pos_aa = compute_chain_pos_aa_mapping(pdb_df)
@@ -153,7 +158,7 @@ def compute_interaction_graph(pdb_df, chain_pos_aa, edge_funcs):
                 G.add_edge(n, next_node, kind={"backbone"})
 
     # Add in each type of edge, based on the above.
-    for func in funcs:
+    for func in edge_funcs:
         func(G)
     return G
 
