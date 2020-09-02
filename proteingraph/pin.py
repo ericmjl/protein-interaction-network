@@ -321,7 +321,8 @@ class ProteinGraph(nx.Graph):
             "NE",  # glutamate, tryptophan, arginine, histidine
             "NH",  # arginine
             "NZ",  # lysine
-            "OD",
+            "OD1",
+            "OD2",
             "OE",
             "OG",
             "OH",
