@@ -2,10 +2,9 @@ import networkx as nx
 import pandas as pd
 from typing import List, Callable
 
+
 def generate_feature_dataframe(
-    G: nx.Graph,
-    funcs: List[Callable],
-    return_array=False,
+    G: nx.Graph, funcs: List[Callable], return_array=False,
 ) -> pd.DataFrame:
     """
     Return a pandas DataFrame representation of node metadata.
@@ -77,7 +76,10 @@ def generate_feature_dataframe(
         for func in funcs:
             res = func(n, d)
             if res.name != n:
-                raise NameError(f"function {func.__name__} returns a series that is not named after the node.")
+                raise NameError(
+                    f"function {func.__name__} returns a series "
+                    "that is not named after the node."
+                )
             series.append(res)
         matrix.append(pd.concat(series))
 
@@ -93,7 +95,7 @@ import numpy as np
 
 def format_adjacency(G: nx.Graph, adj: np.ndarray, name: str) -> xr.DataArray:
     """
-    Helper function to format adjacency matrix nicely.
+    Format adjacency matrix nicely.
 
     Intended to be used when computing an adjacency-like matrix
     off a graph object G.
@@ -125,20 +127,22 @@ def format_adjacency(G: nx.Graph, adj: np.ndarray, name: str) -> xr.DataArray:
     """
     expected_shape = (len(G), len(G))
     if adj.shape != expected_shape:
-        raise ValueError(f"Adjacency matrix is not shaped correctly, should be of shape {expected_shape}, instead got shape {adj.shape}.")
+        raise ValueError(
+            "Adjacency matrix is not shaped correctly, "
+            f"should be of shape {expected_shape}, "
+            f"instead got shape {adj.shape}."
+        )
     adj = np.expand_dims(adj, axis=-1)
     nodes = list(G.nodes())
     return xr.DataArray(
         adj,
         dims=["n1", "n2", "name"],
-        coords={"n1": nodes, "n2": nodes, "name": [name]}
+        coords={"n1": nodes, "n2": nodes, "name": [name]},
     )
 
 
 def generate_adjacency_tensor(
-    G: nx.Graph,
-    funcs: List[Callable],
-    return_array=False
+    G: nx.Graph, funcs: List[Callable], return_array=False
 ) -> xr.DataArray:
     """
     Generate adjacency tensor for a graph.
