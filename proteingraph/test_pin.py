@@ -152,17 +152,9 @@ def test_delaunay_triangulation(net):
     pass
 
 
-# 10 March 2016
-# This test has been passed out until I figure out what the exact criteria
-# for hydrogen bonding is. I intuitively don't think it should be merely 3.5A
-# between any two of N, O, S atoms, regardless of whether they are the same
-# element or not. Rather, it should be O:->N or N:-->O, or something like that.
-@pytest.mark.skip(reason="Not yet implemented.")
+@pytest.mark.skip(reason="Implementation needs to be checked.")
 def test_add_hydrogen_bond_interactions(net):
-    """Tests the function add_hydrogen_bond_interactions_."""
-    # net.add_hydrogen_bond_interactions_()
-    # resis = net.get_edges_by_bond_type('hbond')
-    # assert len(resis) == 86
+    """Test that the addition of hydrogen bond interactions works correctly."""
     pass
 
 
