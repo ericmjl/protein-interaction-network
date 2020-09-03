@@ -12,17 +12,18 @@ from proteingraph import read_pdb
 G = read_pdb("/path/to/file.pdb")
 ```
 """
-
 from collections import defaultdict
+from functools import partial
 from itertools import combinations
+from pathlib import Path
 
 import networkx as nx
 import numpy as np
 import pandas as pd
+from biopandas.pdb import PandasPdb
 from scipy.spatial import Delaunay
 from scipy.spatial.distance import euclidean, pdist, rogerstanimoto, squareform
 from sklearn.preprocessing import LabelBinarizer
-from pathlib import Path
 
 from .resi_atoms import (
     AA_RING_ATOMS,
@@ -42,9 +43,6 @@ from .resi_atoms import (
     POS_AA,
     RESI_NAMES,
 )
-
-
-from biopandas.pdb import PandasPdb
 
 
 def pdb2df(path: Path) -> nx.Graph:
@@ -73,10 +71,7 @@ def compute_chain_pos_aa_mapping(pdb_df):
     return chain_pos_aa
 
 
-from functools import partial
-
-
-def read_pdb(path) -> nx.Graph:
+def read_pdb(path: Path) -> nx.Graph:
     """
     Parse PDB file into protein graph.
 
@@ -96,11 +91,12 @@ def read_pdb(path) -> nx.Graph:
         partial(add_cation_pi_interactions, rgroup_df=rgroup_df),
     ]
 
-    G = compute_interaction_graph(pdb_df, chain_pos_aa, edge_funcs)
+    G = compute_interaction_graph(pdb_df, chain_pos_aa, edge_funcs=edge_funcs)
+    convert_all_sets_to_lists(G)
     return G
 
 
-def compute_interaction_graph(pdb_df, chain_pos_aa, edge_funcs):
+def compute_interaction_graph(pdb_df, chain_pos_aa, edge_funcs=None):
     """
     Compute the interaction graph.
 
@@ -228,8 +224,8 @@ def add_hydrophobic_interactions(G, rgroup_df):
     )
     distmat = compute_distmat(hydrophobics_df)
     interacting_atoms = get_interacting_atoms(5, distmat)
-    G.add_interacting_resis(
-        interacting_atoms, hydrophobics_df, ["hydrophobic"]
+    add_interacting_resis(
+        G, interacting_atoms, hydrophobics_df, ["hydrophobic"]
     )
 
 
