@@ -65,3 +65,4 @@ target/
 #Ipython Notebook
 .ipynb_checkpoints
 default.profraw
+examples/hiv/hiv1_homology_model.pkl
