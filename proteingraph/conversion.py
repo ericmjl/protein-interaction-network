@@ -1,6 +1,9 @@
+from typing import Callable, List
+
 import networkx as nx
+import numpy as np
 import pandas as pd
-from typing import List, Callable
+import xarray as xr
 
 
 def generate_feature_dataframe(
@@ -63,7 +66,8 @@ def generate_feature_dataframe(
 
     - `G`: A NetworkX-compatible graph object.
     - `funcs`: A list of functions.
-    - `return_array`: Whether or not to return a NumPy array version of the data.
+    - `return_array`: Whether or not to return
+        a NumPy array version of the data.
         Useful for consumption in tensor libs, like PyTorch or JAX.
 
     ## Returns
@@ -87,10 +91,6 @@ def generate_feature_dataframe(
     if return_array:
         return df.values
     return df
-
-
-import xarray as xr
-import numpy as np
 
 
 def format_adjacency(G: nx.Graph, adj: np.ndarray, name: str) -> xr.DataArray:
