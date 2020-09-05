@@ -5,3 +5,4 @@ numpy==1.18.4
 scipy==1.4.1
 setuptools==50.0.3
 scikit_learn==0.23.0
+biopandas
