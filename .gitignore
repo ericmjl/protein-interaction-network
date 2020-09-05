@@ -1,6 +1,7 @@
 # Added by Eric
 protein-interaction-network.sublime-workspace
 .vscode/*
+.mypy_cache
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
