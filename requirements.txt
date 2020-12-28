@@ -3,7 +3,7 @@ pandas==1.2.0
 pytest==6.2.1
 numpy==1.19.4
 scipy==1.5.4
-setuptools==50.3.0
+setuptools==51.1.0.post20201221
 scikit_learn==0.23.2
 biopandas==0.2.7
 xarray==0.16.1
