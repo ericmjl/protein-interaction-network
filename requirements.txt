@@ -5,5 +5,5 @@ numpy==1.22.3
 scipy==1.8.0
 setuptools==62.1.0
 scikit_learn==1.0.2
-biopandas==0.2.9
+biopandas==0.3.0
 xarray==0.21.1
