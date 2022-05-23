@@ -6,4 +6,4 @@ scipy==1.8.1
 setuptools==62.3.2
 scikit_learn==1.1.1
 biopandas==0.4.1
-xarray==0.21.1
+xarray==2022.3.0
