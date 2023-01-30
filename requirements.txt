@@ -4,6 +4,6 @@ pytest==7.2.1
 numpy==1.24.1
 scipy==1.10.0
 setuptools==67.0.0
-scikit_learn==1.1.1
+scikit_learn==1.2.1
 biopandas==0.4.1
 xarray==2022.3.0
