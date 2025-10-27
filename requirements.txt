@@ -2,7 +2,7 @@ networkx==3.5
 pandas==2.3.3
 pytest==8.4.2
 numpy==2.3.4
-scipy==1.13.1
+scipy==1.16.2
 setuptools==70.0.0
 scikit_learn==1.5.0
 biopandas==0.4.1
