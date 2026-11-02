@@ -1,4 +1,4 @@
-networkx==3.6.1
+networkx==3.7
 pandas==3.0.3
 pytest==9.0.3
 numpy==2.4.6
